@@ -57,7 +57,7 @@ const state = {
 // ---------- scoring ----------
 
 const tempScore     = (t, ideal) => 100 * Math.exp(-((t - ideal) ** 2) / 128);
-const precipScore   = (prob, mm) => Math.max(0, 100 - (prob || 0) - (mm || 0) * 30);
+const precipScore   = (prob, mm) => Math.max(0, 100 - prob - mm * 30);
 const windScore     = (kmh, tol) => Math.max(0, 100 - Math.max(0, kmh - tol) * 4);
 const uvScore       = (uv)       => Math.max(0, 100 - Math.max(0, uv - 3) * 20);
 const humidityScore = (rh)       => Math.max(0, 100 - Math.max(0, Math.abs(rh - 55) - 15) * 2);
@@ -99,7 +99,6 @@ function wearAdvice(apparent, rainPct, windKmh, uv) {
   if (uv       >=  6) items.push('cap & sunglasses');
   return items.join(' · ');
 }
-
 
 // ---------- API ----------
 
@@ -377,7 +376,7 @@ function loadJSON(key, fallback) {
 }
 
 function init() {
-  state.params = { ...DEFAULT_PARAMS, ...(loadJSON(STORAGE.params, {}) || {}) };
+  state.params = { ...DEFAULT_PARAMS, ...loadJSON(STORAGE.params, {}) };
   syncParamsToUI();
 
   const savedRange = localStorage.getItem(STORAGE.range);
