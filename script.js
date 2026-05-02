@@ -13,6 +13,7 @@ const DEFAULT_PARAMS = {
   wDaylight: 40, wTemp: 20, wPrecip: 20,
   wWind:     10, wHumidity: 5, wUV: 5,
   idealTemp: 10, windTol: 10, windowHours: 1,
+  daylightOnly: true,
 };
 
 const HOURLY_FIELDS = [
@@ -83,6 +84,23 @@ const verdict = (s) =>
   s >= 60 ? 'Good — go for it'        :
   s >= 45 ? 'OK, not perfect'         : 'Skip if you can';
 
+function wearAdvice(apparent, rainPct, windKmh, uv) {
+  const items = [];
+  if      (apparent < -5) items.push('thermal jacket, tights, hat, gloves');
+  else if (apparent <  0) items.push('thermal long sleeve, tights, gloves');
+  else if (apparent <  5) items.push('long sleeve, tights, light gloves');
+  else if (apparent < 10) items.push('long sleeve, tights or capris');
+  else if (apparent < 15) items.push('t-shirt or long sleeve, shorts');
+  else if (apparent < 20) items.push('t-shirt, shorts');
+  else if (apparent < 25) items.push('singlet, shorts');
+  else                    items.push('singlet, shorts — hydrate');
+  if (rainPct  >= 40) items.push('rain jacket');
+  if (windKmh  >= 20) items.push('windbreaker');
+  if (uv       >=  6) items.push('cap & sunglasses');
+  return items.join(' · ');
+}
+
+
 // ---------- API ----------
 
 async function searchCities(q) {
@@ -146,6 +164,7 @@ function buildHours(data, params, rangeKey) {
     const ts = naiveOf(h.time[i]);
     if (ts < lower) continue;
     if (ts >= end)  break;
+    if (params.daylightOnly && !h.is_day[i]) continue;
     const k = dayKey(ts);
     const hour = {
       ts,
@@ -199,20 +218,25 @@ function renderPicks(picks) {
   const mean = (arr, key) => arr.reduce((s, x) => s + x[key], 0) / arr.length;
   const max  = (arr, key) => arr.reduce((m, x) => Math.max(m, x[key]), -Infinity);
   els.picks.innerHTML = picks.map(p => {
-    const first = p.hours[0];
-    const last  = p.hours[p.hours.length - 1];
-    const t     = tier(p.avg);
-    const range = `${fmtHour(first.ts)} – ${fmtHour(last.ts + HOUR_MS)}`;
+    const first    = p.hours[0];
+    const last     = p.hours[p.hours.length - 1];
+    const t        = tier(p.avg);
+    const range    = `${fmtHour(first.ts)} – ${fmtHour(last.ts + HOUR_MS)}`;
+    const apparent = mean(p.hours, 'apparent');
+    const wind     = mean(p.hours, 'wind');
+    const rain     = max(p.hours, 'precipProb');
+    const uv       = max(p.hours, 'uv');
     return `
       <div class="pick s-${t}">
         <div class="when">${first.dayLabel}, ${range}</div>
         <div class="verdict">${verdict(p.avg)} · score ${p.avg}</div>
         <div class="stats">
-          <span><b>${Math.round(mean(p.hours, 'apparent'))}°C</b> feels-like</span>
-          <span><b>${Math.round(mean(p.hours, 'wind'))}</b> km/h wind</span>
-          <span><b>${Math.round(max(p.hours, 'precipProb'))}%</b> rain</span>
-          <span><b>UV ${max(p.hours, 'uv').toFixed(1)}</b></span>
+          <span><b>${Math.round(apparent)}°C</b> feels-like</span>
+          <span><b>${Math.round(wind)}</b> km/h wind</span>
+          <span><b>${Math.round(rain)}%</b> rain</span>
+          <span><b>UV ${uv.toFixed(1)}</b></span>
         </div>
+        <div class="wear">Wear: ${wearAdvice(apparent, rain, wind, uv)}</div>
       </div>`;
   }).join('');
 }
@@ -316,8 +340,11 @@ function syncParamsToUI() {
   for (const id of PARAM_IDS) {
     const input = $(id);
     const out   = paramOut(id);
-    if (input) input.value = state.params[id];
-    if (out)   out.textContent = state.params[id];
+    if (input) {
+      if (input.type === 'checkbox') input.checked = !!state.params[id];
+      else input.value = state.params[id];
+    }
+    if (out && input?.type !== 'checkbox') out.textContent = state.params[id];
   }
 }
 
@@ -329,10 +356,13 @@ function bindParamInputs() {
   for (const id of PARAM_IDS) {
     const input = $(id);
     if (!input) continue;
-    input.addEventListener('input', () => {
-      state.params[id] = parseFloat(input.value);
-      const out = paramOut(id);
-      if (out) out.textContent = input.value;
+    const isCheck = input.type === 'checkbox';
+    input.addEventListener(isCheck ? 'change' : 'input', () => {
+      state.params[id] = isCheck ? input.checked : parseFloat(input.value);
+      if (!isCheck) {
+        const out = paramOut(id);
+        if (out) out.textContent = input.value;
+      }
       persistParams();
       rerender();
     });
