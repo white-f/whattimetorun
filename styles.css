@@ -377,6 +377,7 @@ footer a { color: var(--muted); }
   .params-btn { top: 10px; right: 10px; }
   .params-panel { width: 100vw; max-width: 100vw; padding: 16px 16px 24px; }
 
+  .picks { grid-template-columns: 1fr; }
   .pick { padding: 12px 14px; }
   .pick .when { font-size: 15px; }
   .pick .stats { gap: 6px 12px; font-size: 12px; }
