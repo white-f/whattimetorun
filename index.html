@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>When to run?</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <button id="paramsBtn" class="params-btn" title="Scoring">⚙</button>
+
+  <aside id="paramsPanel" class="params-panel" hidden>
+    <header class="params-header">
+      <h3>Scoring</h3>
+      <button id="paramsClose" class="params-close" title="Close">✕</button>
+    </header>
+
+    <div class="params-section">
+      <div class="params-section-title">Weights</div>
+      <div class="param">
+        <label>Daylight <span class="out" data-out="wDaylight">40</span>%</label>
+        <input type="range" id="wDaylight" min="0" max="100" step="1" value="40">
+      </div>
+      <div class="param">
+        <label>Temperature <span class="out" data-out="wTemp">20</span>%</label>
+        <input type="range" id="wTemp" min="0" max="100" step="1" value="20">
+      </div>
+      <div class="param">
+        <label>Precipitation <span class="out" data-out="wPrecip">20</span>%</label>
+        <input type="range" id="wPrecip" min="0" max="100" step="1" value="20">
+      </div>
+      <div class="param">
+        <label>Wind <span class="out" data-out="wWind">10</span>%</label>
+        <input type="range" id="wWind" min="0" max="100" step="1" value="10">
+      </div>
+      <div class="param">
+        <label>Humidity <span class="out" data-out="wHumidity">5</span>%</label>
+        <input type="range" id="wHumidity" min="0" max="100" step="1" value="5">
+      </div>
+      <div class="param">
+        <label>UV index <span class="out" data-out="wUV">5</span>%</label>
+        <input type="range" id="wUV" min="0" max="100" step="1" value="5">
+      </div>
+      <div class="weights-note">Normalised across the categories above.</div>
+    </div>
+
+    <div class="params-section">
+      <div class="params-section-title">Preferences</div>
+      <div class="param">
+        <label>Ideal feels-like <span class="out" data-out="idealTemp">10</span>°C</label>
+        <input type="range" id="idealTemp" min="-5" max="25" step="1" value="10">
+      </div>
+      <div class="param">
+        <label>Wind tolerance <span class="out" data-out="windTol">10</span> km/h</label>
+        <input type="range" id="windTol" min="0" max="40" step="1" value="10">
+      </div>
+      <div class="param">
+        <label>Window length <span class="out" data-out="windowHours">1</span> h</label>
+        <input type="range" id="windowHours" min="1" max="6" step="1" value="1">
+      </div>
+    </div>
+
+    <button id="paramsReset" class="params-reset">Reset to defaults</button>
+  </aside>
+
+  <main>
+    <header>
+      <h1>When to run?</h1>
+      <p class="sub">Best running windows for the day you pick, based on weather.</p>
+    </header>
+
+    <section class="location">
+      <div class="loc-row">
+        <input id="cityInput" type="text" placeholder="Search a city..." autocomplete="off">
+      </div>
+      <ul id="suggestions" class="suggestions" hidden></ul>
+      <div id="locLabel" class="loc-label"></div>
+      <div class="range-row">
+        <label for="rangeSelect">Day:</label>
+        <select id="rangeSelect">
+          <option value="today" selected>Today</option>
+          <option value="tomorrow">Tomorrow</option>
+          <option value="2days">Day after tomorrow</option>
+        </select>
+      </div>
+    </section>
+
+    <section id="status" class="status">Pick a location to get started.</section>
+
+    <section id="topPicks" class="top-picks" hidden>
+      <h2>Best windows</h2>
+      <div id="picks" class="picks"></div>
+    </section>
+
+    <section id="hourly" class="hourly" hidden>
+      <h2 id="hourlyHeading">Forecast</h2>
+      <div id="hours" class="hours"></div>
+      <div class="legend">
+        <span><i class="dot s-great"></i>great</span>
+        <span><i class="dot s-good"></i>good</span>
+        <span><i class="dot s-ok"></i>ok</span>
+        <span><i class="dot s-bad"></i>poor</span>
+      </div>
+    </section>
+
+    <footer>
+      <small>
+        Weather: <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo Forecast API</a> ·
+        Geocoding: <a href="https://open-meteo.com/en/docs/geocoding-api" target="_blank" rel="noopener">Open-Meteo Geocoding API</a> ·
+        Persistence: <a href="https://developer.mozilla.org/docs/Web/API/Window/localStorage" target="_blank" rel="noopener">localStorage</a>
+        <br>
+        Built with HTML, CSS, vanilla JavaScript ·
+        <a href="https://developer.mozilla.org/docs/Web/API/Fetch_API" target="_blank" rel="noopener">Fetch API</a>
+        <br>
+        Built with <a href="https://claude.com/claude-code" target="_blank" rel="noopener">Claude Code</a> (Anthropic's Claude AI).
+      </small>
+    </footer>
+  </main>
+  <script src="script.js"></script>
+</body>
+</html>
