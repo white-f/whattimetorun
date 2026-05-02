@@ -25,12 +25,16 @@
 
 * { box-sizing: border-box; }
 
+html, body { overflow-x: hidden; }
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
   background: var(--bg);
   color: var(--text);
   line-height: 1.45;
+  -webkit-tap-highlight-color: rgba(79, 195, 161, 0.18);
+  -webkit-text-size-adjust: 100%;
 }
 
 main {
@@ -61,7 +65,7 @@ header h1 {
 #cityInput {
   flex: 1;
   padding: 12px 14px;
-  font-size: 15px;
+  font-size: 16px; /* 16px+ avoids iOS focus zoom */
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border);
@@ -86,9 +90,12 @@ header h1 {
 }
 
 .suggestions li {
-  padding: 10px 14px;
+  padding: 12px 14px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 15px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
 }
 
 .suggestions li:hover { background: var(--panel-2); }
@@ -111,12 +118,12 @@ header h1 {
 }
 
 #rangeSelect {
-  padding: 8px 10px;
+  padding: 10px 12px;
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 16px;
   cursor: pointer;
 }
 
@@ -226,7 +233,8 @@ h2 {
 
 .legend {
   display: flex;
-  gap: 14px;
+  flex-wrap: wrap;
+  gap: 8px 14px;
   margin-top: 12px;
   font-size: 12px;
   color: var(--muted);
@@ -260,13 +268,18 @@ footer a { color: var(--muted); }
   top: 16px;
   right: 16px;
   z-index: 20;
-  padding: 8px 12px;
-  font-size: 13px;
+  width: 44px;
+  height: 44px;
+  font-size: 18px;
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 50%;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 .params-btn:hover { border-color: var(--accent); }
@@ -302,8 +315,9 @@ footer a { color: var(--muted); }
   background: transparent;
   border: 1px solid var(--border);
   color: var(--muted);
-  width: 28px; height: 28px;
-  border-radius: 6px;
+  width: 36px; height: 36px;
+  font-size: 16px;
+  border-radius: 8px;
   cursor: pointer;
 }
 .params-close:hover { color: var(--text); border-color: var(--accent); }
@@ -356,5 +370,21 @@ footer a { color: var(--muted); }
 .params-reset:hover { border-color: var(--accent); }
 
 @media (max-width: 520px) {
+  main { padding: 24px 14px 40px; }
+  header h1 { font-size: 24px; }
+  .sub { font-size: 14px; margin-bottom: 18px; }
+
   .params-btn { top: 10px; right: 10px; }
+  .params-panel { width: 100vw; max-width: 100vw; padding: 16px 16px 24px; }
+
+  .pick { padding: 12px 14px; }
+  .pick .when { font-size: 15px; }
+  .pick .stats { gap: 6px 12px; font-size: 12px; }
+
+  .hours { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 5px; }
+  .hour { padding: 10px 4px; }
+
+  .top-picks, .hourly { margin-top: 22px; }
+
+  footer { font-size: 11px; }
 }
