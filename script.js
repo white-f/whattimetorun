@@ -1,5 +1,3 @@
-// ---------- config ----------
-
 const STORAGE = {
   loc:    'wttr-loc-v1',
   range:  'wttr-range-v1',
@@ -7,12 +5,11 @@ const STORAGE = {
 };
 
 const DAY_OFFSETS = { today: 0, tomorrow: 1, '2days': 2 };
-const DAY_LABELS  = { today: 'Today', tomorrow: 'Tomorrow', '2days': 'Day after tomorrow' };
 
 const DEFAULT_PARAMS = {
   wDaylight: 40, wTemp: 20, wPrecip: 20,
   wWind:     10, wHumidity: 5, wUV: 5,
-  idealTemp: 10, windTol: 10, windowHours: 1,
+  idealTemp: 10, windTol: 10,
   daylightOnly: true,
 };
 
@@ -24,16 +21,14 @@ const HOURLY_FIELDS = [
 
 const HOUR_MS = 3600 * 1000;
 const DAY_MS  = 24 * HOUR_MS;
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-// ---------- DOM ----------
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const $ = (id) => document.getElementById(id);
 const els = {
   cityInput:     $('cityInput'),
   suggestions:   $('suggestions'),
   locLabel:      $('locLabel'),
-  rangeSelect:   $('rangeSelect'),
+  dayBtns:       document.querySelectorAll('.day-btn'),
   hourlyHeading: $('hourlyHeading'),
   status:        $('status'),
   topPicks:      $('topPicks'),
@@ -46,15 +41,19 @@ const els = {
   paramsReset:   $('paramsReset'),
 };
 
-// ---------- state ----------
+let currentRange = 'today';
+
+const setRange = (r) => {
+  currentRange = r;
+  els.dayBtns.forEach(b => b.classList.toggle('active', b.dataset.range === r));
+  localStorage.setItem(STORAGE.range, r);
+};
 
 const state = {
   params:   { ...DEFAULT_PARAMS },
   forecast: null,
   loc:      null,
 };
-
-// ---------- scoring ----------
 
 const tempScore     = (t, ideal) => 100 * Math.exp(-((t - ideal) ** 2) / 128);
 const precipScore   = (prob, mm) => Math.max(0, 100 - prob - mm * 30);
@@ -95,13 +94,11 @@ function wearAdvice(apparent, rainPct, windKmh, uv) {
   else if (apparent < 20) items.push('t-shirt, shorts');
   else if (apparent < 25) items.push('singlet, shorts');
   else                    items.push('singlet, shorts — hydrate');
-  if (rainPct  >= 40) items.push('rain jacket');
-  if (windKmh  >= 20) items.push('windbreaker');
-  if (uv       >=  6) items.push('cap & sunglasses');
+  if (rainPct >= 40) items.push('rain jacket');
+  if (windKmh >= 20) items.push('windbreaker');
+  if (uv      >=  6) items.push('cap & sunglasses');
   return items.join(' · ');
 }
-
-// ---------- API ----------
 
 async function searchCities(q) {
   if (q.length < 2) return [];
@@ -124,8 +121,6 @@ async function fetchForecast(lat, lon) {
   return res.json();
 }
 
-// ---------- time ----------
-
 // Open-Meteo returns local wall-clock strings. We store them as "naive" UTC ms
 // so display reads back the same wall clock regardless of the browser's tz.
 const naiveOf = (isoLocal) => new Date(isoLocal + 'Z').getTime();
@@ -139,8 +134,6 @@ const fmtHour = (ts) => {
   const d = new Date(ts);
   return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
 };
-
-// ---------- forecast → hours ----------
 
 function buildHours(data, params, rangeKey) {
   const offsetMs = (data.utc_offset_seconds || 0) * 1000;
@@ -185,29 +178,13 @@ function buildHours(data, params, rangeKey) {
   return out;
 }
 
-// ---------- top windows ----------
-
-function topWindows(hours, lenHours, n = 3) {
-  const len = Math.max(1, lenHours | 0);
-  const candidates = [];
-  outer: for (let i = 0; i + len - 1 < hours.length; i++) {
-    let sum = 0;
-    for (let j = 0; j < len; j++) {
-      if (j > 0 && hours[i + j].ts - hours[i + j - 1].ts !== HOUR_MS) continue outer;
-      sum += hours[i + j].score;
-    }
-    candidates.push({
-      avg:   Math.round(sum / len),
-      hours: hours.slice(i, i + len),
-    });
-  }
-  return candidates
-    .filter(c => c.avg >= 35)
-    .sort((x, y) => y.avg - x.avg)
-    .slice(0, n);
+function topWindows(hours, n = 3) {
+  return hours
+    .filter(h => h.score >= 35)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, n)
+    .map(h => ({ avg: h.score, hours: [h] }));
 }
-
-// ---------- rendering ----------
 
 function renderPicks(picks) {
   if (!picks.length) {
@@ -237,29 +214,57 @@ function renderPicks(picks) {
           <span><b>${Math.round(rain)}%</b> rain</span>
           <span><b>UV ${uv.toFixed(1)}</b></span>
         </div>
-        <div class="wear">Wear: ${wearAdvice(apparent, rain, wind, uv)}</div>
+        <div class="wear">Kit: ${wearAdvice(apparent, rain, wind, uv)}</div>
       </div>`;
   }).join('');
 }
 
 function renderHours(hours) {
-  let lastKey = null;
   els.hours.innerHTML = hours.map(h => {
-    const t      = tier(h.score);
-    const newDay = lastKey && h.dayKey !== lastKey;
-    lastKey = h.dayKey;
-    const tooltip =
-      `${h.dayLabel} ${fmtHour(h.ts)} · score ${h.score}\n` +
-      `${Math.round(h.temp)}°C (feels ${Math.round(h.apparent)}°C)\n` +
-      `wind ${Math.round(h.wind)} km/h · rain ${Math.round(h.precipProb)}%\n` +
-      `humidity ${Math.round(h.humidity)}% · UV ${h.uv.toFixed(1)}`;
+    const t = tier(h.score);
     return `
-      <div class="hour s-${t}${newDay ? ' day-divider' : ''}" title="${tooltip}">
+      <div class="hour s-${t}"
+        data-temp="${Math.round(h.temp)}"
+        data-apparent="${Math.round(h.apparent)}"
+        data-wind="${Math.round(h.wind)}"
+        data-rain="${Math.round(h.precipProb)}"
+        data-humidity="${Math.round(h.humidity)}"
+        data-uv="${h.uv.toFixed(1)}"
+        data-score="${h.score}">
         <div class="hr-score">${h.score}</div>
         <div class="hr-temp">${Math.round(h.apparent)}°</div>
         <div class="hr-label">${fmtHour(h.ts)}</div>
       </div>`;
   }).join('');
+}
+
+const tooltip = $('tooltip');
+
+els.hours.addEventListener('mouseover', (e) => {
+  const hour = e.target.closest('.hour');
+  if (!hour) return;
+  const d = hour.dataset;
+  tooltip.innerHTML =
+    `<div class="tt-row"><span>Feels like</span><b>${d.apparent}°C</b></div>` +
+    `<div class="tt-row"><span>Actual</span><b>${d.temp}°C</b></div>` +
+    `<div class="tt-row"><span>Wind</span><b>${d.wind} km/h</b></div>` +
+    `<div class="tt-row"><span>Rain</span><b>${d.rain}%</b></div>` +
+    `<div class="tt-row"><span>Humidity</span><b>${d.humidity}%</b></div>` +
+    `<div class="tt-row"><span>UV</span><b>${d.uv}</b></div>` +
+    `<div class="tt-row"><span>Score</span><b>${d.score}</b></div>`;
+  tooltip.hidden = false;
+  positionTooltip(hour);
+});
+
+els.hours.addEventListener('mouseleave', () => { tooltip.hidden = true; });
+
+function positionTooltip(anchor) {
+  const r = anchor.getBoundingClientRect();
+  const tw = tooltip.offsetWidth;
+  let left = r.left + r.width / 2 - tw / 2;
+  left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
+  tooltip.style.left = `${left + window.scrollX}px`;
+  tooltip.style.top  = `${r.top + window.scrollY - tooltip.offsetHeight - 8}px`;
 }
 
 function showStatus(message) {
@@ -275,17 +280,16 @@ function showResults() {
   els.hourly.hidden   = false;
 }
 
-// ---------- flow ----------
-
 function rerender() {
   if (!state.forecast) return;
-  els.hourlyHeading.textContent = DAY_LABELS[els.rangeSelect.value] || 'Forecast';
-  const hours = buildHours(state.forecast, state.params, els.rangeSelect.value);
+  els.hourlyHeading.textContent =
+    document.querySelector('.day-btn.active')?.textContent || 'Forecast';
+  const hours = buildHours(state.forecast, state.params, currentRange);
   if (!hours.length) {
     showStatus('No forecast hours for the selected day.');
     return;
   }
-  renderPicks(topWindows(hours, state.params.windowHours));
+  renderPicks(topWindows(hours));
   renderHours(hours);
   showResults();
 }
@@ -302,8 +306,6 @@ async function loadFor(lat, lon, label) {
     showStatus(`Couldn't load forecast: ${e.message}`);
   }
 }
-
-// ---------- city search ----------
 
 const escapeAttr = (s) => s.replace(/"/g, '&quot;');
 let searchTimer = null;
@@ -331,8 +333,6 @@ function onSuggestionClick(e) {
   els.cityInput.value = li.dataset.label;
   loadFor(parseFloat(li.dataset.lat), parseFloat(li.dataset.lon), li.dataset.label);
 }
-
-// ---------- params panel ----------
 
 const PARAM_IDS = Object.keys(DEFAULT_PARAMS);
 const paramOut  = (id) => document.querySelector(`[data-out="${id}"]`);
@@ -380,8 +380,6 @@ function bindParamInputs() {
   }
 }
 
-// ---------- bootstrap ----------
-
 function loadJSON(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; }
   catch { return fallback; }
@@ -391,8 +389,11 @@ function init() {
   state.params = { ...DEFAULT_PARAMS, ...loadJSON(STORAGE.params, {}) };
   syncParamsToUI();
 
+  const twoDaysBtn = document.querySelector('.day-btn[data-range="2days"]');
+  if (twoDaysBtn) twoDaysBtn.textContent = WEEKDAYS[new Date(Date.now() + 2 * DAY_MS).getDay()];
+
   const savedRange = localStorage.getItem(STORAGE.range);
-  if (savedRange && savedRange in DAY_OFFSETS) els.rangeSelect.value = savedRange;
+  if (savedRange && savedRange in DAY_OFFSETS) setRange(savedRange);
 
   els.cityInput.addEventListener('input', onCityInput);
   els.suggestions.addEventListener('click', onSuggestionClick);
@@ -400,10 +401,10 @@ function init() {
     if (!e.target.closest('.location')) els.suggestions.hidden = true;
   });
 
-  els.rangeSelect.addEventListener('change', () => {
-    localStorage.setItem(STORAGE.range, els.rangeSelect.value);
+  els.dayBtns.forEach(b => b.addEventListener('click', () => {
+    setRange(b.dataset.range);
     rerender();
-  });
+  }));
 
   els.paramsBtn.addEventListener('click',   () => els.paramsPanel.hidden = false);
   els.paramsClose.addEventListener('click', () => els.paramsPanel.hidden = true);

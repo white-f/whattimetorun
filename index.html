@@ -16,16 +16,9 @@
     </header>
 
     <div class="params-section">
-      <div class="params-section-title">Weights</div>
       <div class="param">
         <label>Daylight <span class="out" data-out="wDaylight">40</span>%</label>
         <input type="range" id="wDaylight" min="0" max="100" step="1" value="40">
-      </div>
-      <div class="param param-check">
-        <label>
-          <input type="checkbox" id="daylightOnly" checked>
-          Show only daylight hours
-        </label>
       </div>
       <div class="param">
         <label>Temperature <span class="out" data-out="wTemp">20</span>%</label>
@@ -47,11 +40,11 @@
         <label>UV index <span class="out" data-out="wUV">5</span>%</label>
         <input type="range" id="wUV" min="0" max="100" step="1" value="5">
       </div>
-      <div class="weights-note">Normalised across the categories above.</div>
     </div>
 
+    <div class="params-divider"></div>
+
     <div class="params-section">
-      <div class="params-section-title">Preferences</div>
       <div class="param">
         <label>Ideal feels-like <span class="out" data-out="idealTemp">10</span>°C</label>
         <input type="range" id="idealTemp" min="-5" max="25" step="1" value="10">
@@ -60,9 +53,11 @@
         <label>Wind tolerance <span class="out" data-out="windTol">10</span> km/h</label>
         <input type="range" id="windTol" min="0" max="40" step="1" value="10">
       </div>
-      <div class="param">
-        <label>Window length <span class="out" data-out="windowHours">1</span> h</label>
-        <input type="range" id="windowHours" min="1" max="6" step="1" value="1">
+      <div class="param param-check">
+        <label>
+          <input type="checkbox" id="daylightOnly" checked>
+          Daylight hours only
+        </label>
       </div>
     </div>
 
@@ -82,12 +77,9 @@
       <ul id="suggestions" class="suggestions" hidden></ul>
       <div id="locLabel" class="loc-label"></div>
       <div class="range-row">
-        <label for="rangeSelect">Day:</label>
-        <select id="rangeSelect">
-          <option value="today" selected>Today</option>
-          <option value="tomorrow">Tomorrow</option>
-          <option value="2days">Day after tomorrow</option>
-        </select>
+        <button class="day-btn active" data-range="today">Today</button>
+        <button class="day-btn" data-range="tomorrow">Tomorrow</button>
+        <button class="day-btn" data-range="2days">+2 days</button>
       </div>
     </section>
 
@@ -120,6 +112,7 @@
       </small>
     </footer>
   </main>
+  <div id="tooltip" class="tooltip" hidden></div>
   <script src="script.js"></script>
 </body>
 </html>
