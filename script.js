@@ -64,7 +64,8 @@ const humidityScore = (rh)       => Math.max(0, 100 - Math.max(0, Math.abs(rh - 
 const daylightScore = (isDay)    => isDay ? 100 : 0;
 
 function scoreHour(h, p) {
-  const total = p.wDaylight + p.wTemp + p.wPrecip + p.wWind + p.wHumidity + p.wUV;
+  const wDaylight = p.daylightOnly ? 0 : p.wDaylight;
+  const total = wDaylight + p.wTemp + p.wPrecip + p.wWind + p.wHumidity + p.wUV;
   if (!total) return 0;
   return Math.round((
     tempScore(h.apparent, p.idealTemp)    * p.wTemp +
@@ -72,7 +73,7 @@ function scoreHour(h, p) {
     windScore(h.wind, p.windTol)          * p.wWind +
     uvScore(h.uv)                         * p.wUV +
     humidityScore(h.humidity)             * p.wHumidity +
-    daylightScore(h.isDay)                * p.wDaylight
+    daylightScore(h.isDay)                * wDaylight
   ) / total);
 }
 
@@ -227,8 +228,9 @@ function renderPicks(picks) {
     const uv       = max(p.hours, 'uv');
     return `
       <div class="pick s-${t}">
+        <div class="pick-score">${p.avg}</div>
         <div class="when">${first.dayLabel}, ${range}</div>
-        <div class="verdict">${verdict(p.avg)} · score ${p.avg}</div>
+        <div class="verdict">${verdict(p.avg)}</div>
         <div class="stats">
           <span><b>${Math.round(apparent)}°C</b> feels-like</span>
           <span><b>${Math.round(wind)}</b> km/h wind</span>
@@ -253,9 +255,9 @@ function renderHours(hours) {
       `humidity ${Math.round(h.humidity)}% · UV ${h.uv.toFixed(1)}`;
     return `
       <div class="hour s-${t}${newDay ? ' day-divider' : ''}" title="${tooltip}">
-        <div class="hr-label">${fmtHour(h.ts)}</div>
+        <div class="hr-score">${h.score}</div>
         <div class="hr-temp">${Math.round(h.apparent)}°</div>
-        <div class="hr-bar"><div style="width:${h.score}%"></div></div>
+        <div class="hr-label">${fmtHour(h.ts)}</div>
       </div>`;
   }).join('');
 }
@@ -345,6 +347,15 @@ function syncParamsToUI() {
     }
     if (out && input?.type !== 'checkbox') out.textContent = state.params[id];
   }
+  syncDaylightSlider();
+}
+
+function syncDaylightSlider() {
+  const disabled = !!state.params.daylightOnly;
+  const input = $('wDaylight');
+  const row   = input?.closest('.param');
+  if (input) input.disabled = disabled;
+  if (row)   row.style.opacity = disabled ? '0.4' : '';
 }
 
 function persistParams() {
@@ -362,6 +373,7 @@ function bindParamInputs() {
         const out = paramOut(id);
         if (out) out.textContent = input.value;
       }
+      if (isCheck) syncDaylightSlider();
       persistParams();
       rerender();
     });
