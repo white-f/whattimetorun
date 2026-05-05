@@ -1,7 +1,9 @@
 const STORAGE = {
-  loc:    'wttr-loc-v1',
-  range:  'wttr-range-v1',
-  params: 'wttr-params-v1',
+  loc:      'wttr-loc-v1',
+  range:    'wttr-range-v1',
+  params:   'wttr-params-v1',
+  unit:     'wttr-unit-v1',
+  windUnit: 'wttr-wind-v1',
 };
 
 const DAY_OFFSETS = { today: 0, tomorrow: 1, '2days': 2 };
@@ -39,6 +41,8 @@ const els = {
   paramsPanel:   $('paramsPanel'),
   paramsClose:   $('paramsClose'),
   paramsReset:   $('paramsReset'),
+  unitToggle:    $('unitToggle'),
+  windToggle:    $('windToggle'),
 };
 
 let currentRange = 'today';
@@ -50,9 +54,28 @@ const setRange = (r) => {
 };
 
 const state = {
-  params:   { ...DEFAULT_PARAMS },
-  forecast: null,
-  loc:      null,
+  params:          { ...DEFAULT_PARAMS },
+  forecast:        null,
+  loc:             null,
+  useFahrenheit:   false,
+  useImperialWind: false,
+};
+
+const toF   = (c)   => c * 9 / 5 + 32;
+const toMs  = (kmh) => kmh / 3.6;
+const toMph = (kmh) => kmh / 1.60934;
+
+const displayTemp = (c) => state.useFahrenheit
+  ? `${Math.round(toF(c))}°F`
+  : `${Math.round(c)}°C`;
+const displayWind = (kmh) => state.useImperialWind
+  ? `${Math.round(toMph(kmh))} mph`
+  : `${(toMs(kmh)).toFixed(1)} m/s`;
+
+const displayParamValue = (id, val) => {
+  if (id === 'idealTemp') return state.useFahrenheit  ? Math.round(toF(val))   : val;
+  if (id === 'windTol')   return state.useImperialWind ? Math.round(toMph(val)) : toMs(val).toFixed(1);
+  return val;
 };
 
 const tempScore     = (t, ideal) => 100 * Math.exp(-((t - ideal) ** 2) / 128);
@@ -209,8 +232,8 @@ function renderPicks(picks) {
         <div class="when">${first.dayLabel}, ${range}</div>
         <div class="verdict">${verdict(p.avg)}</div>
         <div class="stats">
-          <span><b>${Math.round(apparent)}°C</b> feels-like</span>
-          <span><b>${Math.round(wind)}</b> km/h wind</span>
+          <span><b>${displayTemp(apparent)}</b> feels-like</span>
+          <span><b>${displayWind(wind)}</b> wind</span>
           <span><b>${Math.round(rain)}%</b> rain</span>
           <span><b>UV ${uv.toFixed(1)}</b></span>
         </div>
@@ -232,7 +255,7 @@ function renderHours(hours) {
         data-uv="${h.uv.toFixed(1)}"
         data-score="${h.score}">
         <div class="hr-score">${h.score}</div>
-        <div class="hr-temp">${Math.round(h.apparent)}°</div>
+        <div class="hr-temp">${displayTemp(h.apparent)}</div>
         <div class="hr-label">${fmtHour(h.ts)}</div>
       </div>`;
   }).join('');
@@ -245,9 +268,9 @@ els.hours.addEventListener('mouseover', (e) => {
   if (!hour) return;
   const d = hour.dataset;
   tooltip.innerHTML =
-    `<div class="tt-row"><span>Feels like</span><b>${d.apparent}°C</b></div>` +
-    `<div class="tt-row"><span>Actual</span><b>${d.temp}°C</b></div>` +
-    `<div class="tt-row"><span>Wind</span><b>${d.wind} km/h</b></div>` +
+    `<div class="tt-row"><span>Feels like</span><b>${displayTemp(+d.apparent)}</b></div>` +
+    `<div class="tt-row"><span>Actual</span><b>${displayTemp(+d.temp)}</b></div>` +
+    `<div class="tt-row"><span>Wind</span><b>${displayWind(+d.wind)}</b></div>` +
     `<div class="tt-row"><span>Rain</span><b>${d.rain}%</b></div>` +
     `<div class="tt-row"><span>Humidity</span><b>${d.humidity}%</b></div>` +
     `<div class="tt-row"><span>UV</span><b>${d.uv}</b></div>` +
@@ -345,9 +368,20 @@ function syncParamsToUI() {
       if (input.type === 'checkbox') input.checked = !!state.params[id];
       else input.value = state.params[id];
     }
-    if (out && input?.type !== 'checkbox') out.textContent = state.params[id];
+    if (out && input?.type !== 'checkbox') out.textContent = displayParamValue(id, state.params[id]);
   }
   syncDaylightSlider();
+  syncUnitUI();
+}
+
+function syncUnitUI() {
+  const unitSpan = $('idealTempUnit');
+  if (unitSpan) unitSpan.textContent = state.useFahrenheit ? '°F' : '°C';
+  if (els.unitToggle) els.unitToggle.classList.toggle('active', state.useFahrenheit);
+
+  const windUnitSpan = $('windTolUnit');
+  if (windUnitSpan) windUnitSpan.textContent = state.useImperialWind ? ' mph' : ' m/s';
+  if (els.windToggle) els.windToggle.classList.toggle('active', state.useImperialWind);
 }
 
 function syncDaylightSlider() {
@@ -371,7 +405,7 @@ function bindParamInputs() {
       state.params[id] = isCheck ? input.checked : parseFloat(input.value);
       if (!isCheck) {
         const out = paramOut(id);
-        if (out) out.textContent = input.value;
+        if (out) out.textContent = displayParamValue(id, parseFloat(input.value));
       }
       if (isCheck) syncDaylightSlider();
       persistParams();
@@ -387,6 +421,15 @@ function loadJSON(key, fallback) {
 
 function init() {
   state.params = { ...DEFAULT_PARAMS, ...loadJSON(STORAGE.params, {}) };
+  const locale = navigator.language;
+  const savedUnit = localStorage.getItem(STORAGE.unit);
+  state.useFahrenheit = savedUnit !== null
+    ? savedUnit === 'F'
+    : /^en-US\b/i.test(locale);
+  const savedWind = localStorage.getItem(STORAGE.windUnit);
+  state.useImperialWind = savedWind !== null
+    ? savedWind === 'mph'
+    : /^en-US\b/i.test(locale);
   syncParamsToUI();
 
   const twoDaysBtn = document.querySelector('.day-btn[data-range="2days"]');
@@ -405,6 +448,20 @@ function init() {
     setRange(b.dataset.range);
     rerender();
   }));
+
+  els.unitToggle?.addEventListener('click', () => {
+    state.useFahrenheit = !state.useFahrenheit;
+    localStorage.setItem(STORAGE.unit, state.useFahrenheit ? 'F' : 'C');
+    syncParamsToUI();
+    rerender();
+  });
+
+  els.windToggle?.addEventListener('click', () => {
+    state.useImperialWind = !state.useImperialWind;
+    localStorage.setItem(STORAGE.windUnit, state.useImperialWind ? 'mph' : 'kmh');
+    syncParamsToUI();
+    rerender();
+  });
 
   els.paramsBtn.addEventListener('click',   () => els.paramsPanel.hidden = false);
   els.paramsClose.addEventListener('click', () => els.paramsPanel.hidden = true);
