@@ -330,29 +330,6 @@ h2 {
 
 .tt-row b { color: var(--text); font-weight: 600; }
 
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 14px;
-  margin-top: 12px;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.legend .dot {
-  display: inline-block;
-  width: 10px; height: 10px;
-  border-radius: 50%;
-  margin-right: 4px;
-  vertical-align: middle;
-}
-
-.dot.s-great { background: var(--great); }
-.dot.s-good  { background: var(--good); }
-.dot.s-ok    { background: var(--ok); }
-.dot.s-bad   { background: var(--bad); }
-
-
 footer {
   margin-top: 40px;
   text-align: center;
