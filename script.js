@@ -184,7 +184,6 @@ function buildHours(data, params, rangeKey) {
     const k = dayKey(ts);
     const hour = {
       ts,
-      dayKey:     k,
       dayLabel:   labelFor(ts, k),
       temp:       h.temperature_2m[i],
       apparent:   h.apparent_temperature[i],
