@@ -43,22 +43,22 @@ const els = {
   paramsReset:   $('paramsReset'),
   unitToggle:    $('unitToggle'),
   windToggle:    $('windToggle'),
-};
-
-let currentRange = 'today';
-
-const setRange = (r) => {
-  currentRange = r;
-  els.dayBtns.forEach(b => b.classList.toggle('active', b.dataset.range === r));
-  localStorage.setItem(STORAGE.range, r);
+  tooltip:       $('tooltip'),
 };
 
 const state = {
+  range:           'today',
   params:          { ...DEFAULT_PARAMS },
   forecast:        null,
   loc:             null,
   useFahrenheit:   false,
   useImperialWind: false,
+};
+
+const setRange = (r) => {
+  state.range = r;
+  els.dayBtns.forEach(b => b.classList.toggle('active', b.dataset.range === r));
+  localStorage.setItem(STORAGE.range, r);
 };
 
 const toF   = (c)   => c * 9 / 5 + 32;
@@ -205,8 +205,7 @@ function topWindows(hours, n = 3) {
   return hours
     .filter(h => h.score >= 35)
     .sort((a, b) => b.score - a.score)
-    .slice(0, n)
-    .map(h => ({ avg: h.score, hours: [h] }));
+    .slice(0, n);
 }
 
 function renderPicks(picks) {
@@ -215,29 +214,21 @@ function renderPicks(picks) {
       '<div class="status">No good running windows for the selected day.</div>';
     return;
   }
-  const mean = (arr, key) => arr.reduce((s, x) => s + x[key], 0) / arr.length;
-  const max  = (arr, key) => arr.reduce((m, x) => Math.max(m, x[key]), -Infinity);
-  els.picks.innerHTML = picks.map(p => {
-    const first    = p.hours[0];
-    const last     = p.hours[p.hours.length - 1];
-    const t        = tier(p.avg);
-    const range    = `${fmtHour(first.ts)} – ${fmtHour(last.ts + HOUR_MS)}`;
-    const apparent = mean(p.hours, 'apparent');
-    const wind     = mean(p.hours, 'wind');
-    const rain     = max(p.hours, 'precipProb');
-    const uv       = max(p.hours, 'uv');
+  els.picks.innerHTML = picks.map(h => {
+    const t     = tier(h.score);
+    const range = `${fmtHour(h.ts)} – ${fmtHour(h.ts + HOUR_MS)}`;
     return `
       <div class="pick s-${t}">
-        <div class="pick-score">${p.avg}</div>
-        <div class="when">${first.dayLabel}, ${range}</div>
-        <div class="verdict">${verdict(p.avg)}</div>
+        <div class="pick-score">${h.score}</div>
+        <div class="when">${h.dayLabel}, ${range}</div>
+        <div class="verdict">${verdict(h.score)}</div>
         <div class="stats">
-          <span><b>${displayTemp(apparent)}</b> feels-like</span>
-          <span><b>${displayWind(wind)}</b> wind</span>
-          <span><b>${Math.round(rain)}%</b> rain</span>
-          <span><b>UV ${uv.toFixed(1)}</b></span>
+          <span><b>${displayTemp(h.apparent)}</b> feels-like</span>
+          <span><b>${displayWind(h.wind)}</b> wind</span>
+          <span><b>${Math.round(h.precipProb)}%</b> rain</span>
+          <span><b>UV ${h.uv.toFixed(1)}</b></span>
         </div>
-        <div class="wear">Kit: ${wearAdvice(apparent, rain, wind, uv)}</div>
+        <div class="wear">Kit: ${wearAdvice(h.apparent, h.precipProb, h.wind, h.uv)}</div>
       </div>`;
   }).join('');
 }
@@ -261,13 +252,11 @@ function renderHours(hours) {
   }).join('');
 }
 
-const tooltip = $('tooltip');
-
 els.hours.addEventListener('mouseover', (e) => {
   const hour = e.target.closest('.hour');
   if (!hour) return;
   const d = hour.dataset;
-  tooltip.innerHTML =
+  els.tooltip.innerHTML =
     `<div class="tt-row"><span>Feels like</span><b>${displayTemp(+d.apparent)}</b></div>` +
     `<div class="tt-row"><span>Actual</span><b>${displayTemp(+d.temp)}</b></div>` +
     `<div class="tt-row"><span>Wind</span><b>${displayWind(+d.wind)}</b></div>` +
@@ -275,19 +264,19 @@ els.hours.addEventListener('mouseover', (e) => {
     `<div class="tt-row"><span>Humidity</span><b>${d.humidity}%</b></div>` +
     `<div class="tt-row"><span>UV</span><b>${d.uv}</b></div>` +
     `<div class="tt-row"><span>Score</span><b>${d.score}</b></div>`;
-  tooltip.hidden = false;
+  els.tooltip.hidden = false;
   positionTooltip(hour);
 });
 
-els.hours.addEventListener('mouseleave', () => { tooltip.hidden = true; });
+els.hours.addEventListener('mouseleave', () => { els.tooltip.hidden = true; });
 
 function positionTooltip(anchor) {
   const r = anchor.getBoundingClientRect();
-  const tw = tooltip.offsetWidth;
+  const tw = els.tooltip.offsetWidth;
   let left = r.left + r.width / 2 - tw / 2;
   left = Math.max(8, Math.min(left, window.innerWidth - tw - 8));
-  tooltip.style.left = `${left + window.scrollX}px`;
-  tooltip.style.top  = `${r.top + window.scrollY - tooltip.offsetHeight - 8}px`;
+  els.tooltip.style.left = `${left + window.scrollX}px`;
+  els.tooltip.style.top  = `${r.top + window.scrollY - els.tooltip.offsetHeight - 8}px`;
 }
 
 function showStatus(message) {
@@ -307,7 +296,7 @@ function rerender() {
   if (!state.forecast) return;
   els.hourlyHeading.textContent =
     document.querySelector('.day-btn.active')?.textContent || 'Forecast';
-  const hours = buildHours(state.forecast, state.params, currentRange);
+  const hours = buildHours(state.forecast, state.params, state.range);
   if (!hours.length) {
     showStatus('No forecast hours for the selected day.');
     return;
@@ -330,7 +319,9 @@ async function loadFor(lat, lon, label) {
   }
 }
 
-const escapeAttr = (s) => s.replace(/"/g, '&quot;');
+const escapeHtml = (s) => s.replace(/[&<>"']/g, c => ({
+  '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+}[c]));
 let searchTimer = null;
 
 function onCityInput() {
@@ -343,7 +334,7 @@ function onCityInput() {
     els.suggestions.innerHTML = results.map(r => {
       const sub   = [r.admin1, r.country].filter(Boolean).join(', ');
       const label = `${r.name}${sub ? ', ' + sub : ''}`;
-      return `<li data-lat="${r.latitude}" data-lon="${r.longitude}" data-label="${escapeAttr(label)}">${r.name} <small>${sub}</small></li>`;
+      return `<li data-lat="${r.latitude}" data-lon="${r.longitude}" data-label="${escapeHtml(label)}">${escapeHtml(r.name)} <small>${escapeHtml(sub)}</small></li>`;
     }).join('');
     els.suggestions.hidden = false;
   }, 250);
