@@ -1,0 +1,78 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Release signing credentials are kept out of version control in
+// android/keystore.properties (git-ignored). When that file is absent
+// (e.g. a fresh clone or CI without secrets) the release signingConfig is
+// simply left unconfigured, so debug builds still work.
+def keystorePropertiesFile = rootProject.file('keystore.properties')
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+android {
+    namespace 'com.whattimetorun.app'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "com.whattimetorun.app"
+        minSdk 26
+        targetSdk 36
+        versionCode 1
+        versionName "1.0"
+    }
+
+    signingConfigs {
+        release {
+            if (keystorePropertiesFile.exists()) {
+                storeFile file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            // Only attach the signing config when credentials are present.
+            if (keystorePropertiesFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+// The app is a self-contained WebView shell around the bundled web assets,
+// so it needs no third-party dependencies — only the Android framework.
+dependencies {
+}
+
+// --- Web asset sync -------------------------------------------------------
+// The web app lives in the repo root; the WebView loads a bundled copy from
+// src/main/assets. This task keeps that copy in sync automatically so the
+// root files stay the single source of truth — no manual copying needed.
+def webSourceDir = rootProject.projectDir.parentFile   // repo root (one level above android/)
+
+tasks.register('syncWebAssets', Copy) {
+    description = 'Copies the root web app files into the Android assets folder.'
+    group = 'build'
+    from(webSourceDir) {
+        include 'index.html', 'styles.css', 'script.js'
+    }
+    into layout.projectDirectory.dir('src/main/assets')
+}
+
+// Run the sync before anything that needs the assets present.
+tasks.named('preBuild') {
+    dependsOn 'syncWebAssets'
+}

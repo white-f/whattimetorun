@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches the web app's background and accent colors so the launch
+         screen and icon stay visually consistent with the page itself. -->
+    <color name="appBackground">#0f1115</color>
+    <color name="ic_launcher_background">#4fc3a1</color>
+</resources>

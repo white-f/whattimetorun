@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- No ActionBar (the web UI has its own header); dark window background
+         so there is no white flash before the page paints. -->
+    <style name="Theme.App" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/appBackground</item>
+        <item name="android:statusBarColor">@color/appBackground</item>
+    </style>
+</resources>
