@@ -1,4 +1,4 @@
-package com.whattimetorun.app;
+package wf.whattimetorun;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;

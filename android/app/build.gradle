@@ -13,11 +13,11 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace 'com.whattimetorun.app'
+    namespace 'wf.whattimetorun'
     compileSdk 36
 
     defaultConfig {
-        applicationId "com.whattimetorun.app"
+        applicationId "wf.whattimetorun"
         minSdk 26
         targetSdk 36
         versionCode 1
